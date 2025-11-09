@@ -1,0 +1,59 @@
+name: Matrix Build with Artifacts (d5ab0d3)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: 18
+            variant: ubuntu-node18
+          - os: macos-latest
+            node: 20
+            variant: macos-node20
+          - os: windows-latest
+            node: 22
+            variant: windows-node22
+
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # REQUIRED IDENTIFIER STEP
+      - name: matrix-d5ab0d3
+        run: echo "Building variant ${{ matrix.variant }} on ${{ matrix.os }} with Node ${{ matrix.node }}"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # Generate a non-empty artifact with useful metadata
+      - name: Generate build artifact
+        shell: pwsh
+        run: |
+          $nodeVersion = node -v
+          @"
+          Variant: ${{ matrix.variant }}
+          OS: $env:RUNNER_OS
+          Node: $nodeVersion
+          Commit: $env:GITHUB_SHA
+          Timestamp: $(Get-Date -Format o)
+          "@ | Out-File -FilePath build.txt -Encoding utf8
+
+          if (-not (Get-Item build.txt).Length) { throw "build.txt is empty" }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-d5ab0d3-${{ matrix.variant }}
+          path: build.txt
+          if-no-files-found: error
